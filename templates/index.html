@@ -60,7 +60,7 @@
             <p>One example of mitigation using input validation is to leverage regular expressions.</p>
             <p>The following code will ensure that the input is a 4-digit string greater than 0.</p>
             <pre><code>
-pattern  = "\d{4}"
+pattern  = '^\d{4}$'
 match = re.search(pattern, selected_year)
 if not match or selected_year == '0000':
     selected_year = '2022'
