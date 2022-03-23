@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static',filename='styles.css') }}">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <title>Flask CRE Demo</title>
+</head>
+
+<body>
+    <div id="outer-container">
+        <div id="left-content">
+            <h2>Application Details</h2>
+            <p>This is a simple website that generates calendars based on a user selected value.</p>
+            <p>The Flask backend creates the calendar using the <code>cal</code> command-line
+                utility with a user-provided argument, meaning it has a potential vulnerability to
+                <strong>remote code execution</strong>.</p>
+            <pre><code>    @app.route('/', methods=['GET', 'POST'])
+    def main():
+1      if request.method == 'POST':
+          selected_year = request.form['years']
+       else:
+          selected_year = 2022
+    
+2      command = f'cal {selected_year}'
+3      cal = subprocess.check_output(command, shell=True).decode('ascii')
+
+4      return render_template('index.html', cal=cal)
+            </code></pre>
+            <ol>
+                <li>On post, the <code>main</code> method captures the value of the HTML select element
+                    and stores that value in the <code>selected_year</code> variable.</li>
+                <li>The <code>selected_year</code> value is appended onto the <code>command</code>
+                    variable. This is the literal string that will be passed to the OS to be executed.</li>
+                <li>The <code>check_output</code> function is called using command as the argument with
+                    the output being stored into the <code>cal</code> variable.</li>
+                <li>The calendar is passed to the HTML template file to be rendered back to the user.</li>
+            </ol>
+            <br>
+            <h2>Exploit</h2>
+            <p>Try modifying the value of one of the options and submitting that selection. What happens?</p>
+            <p>Example:</p>
+            <pre><code>&lt;option value="; uname -a"&gt;2022&lt;/option&gt;</code></pre>
+
+            <p>If you performed the modification successfully, you should see a printout of OS
+                information below the calendar.</p>
+            <p>This is because the command being sent to the OS to be called is made to be:</p>
+            <pre><code>$ cal ; uname -a</code></pre>
+            <p>which is two completely separate commands separated by the semicolon.</p>
+            <p>An attacker could substitute the <code>uname</code> call for an arbitrary command which obviously
+                represents a severe vulnerability.</p>
+            <br>
+            <h2>Mitigation</h2>
+            <h3>Input Validation</h3>
+            <p>One example of mitigation using input validation is to leverage regular expressions.</p>
+            <p>The following code will ensure that the input is a 4-digit string greater than 0.</p>
+            <pre><code>
+pattern  = "\d{4}"
+match = re.search(pattern, selected_year)
+if not match or selected_year == '0000':
+    selected_year = '2022'
+            </code></pre>
+
+            <h3>Modify Function Call</h3>
+            <p>Notice that the <code>check_output</code> call passes True for the <code>shell</code> argument.
+                While this makes it easier to run complicated commands, it's also much riskier.</p>
+            <p>The better solution is to remove the <code>shell</code> argument and call the function as follows:</p>
+            <pre><code>
+try:
+    cal = subprocess.check_output(['cal', selected_year]).decode('ascii')
+except:
+    cal = subprocess.check_output(['cal', '2022']).decode('ascii')
+            </code></pre>
+            <p>The important change is that <code>check_output</code> is now being called with a list
+                as the first argument. The first element of this list represents the command to be 
+                invoked. The other elements represent arguments to that command.</p>
+            <p>For example: If the same exploit as above is attempted after making this change, the command that gets
+                executed is actually <pre><code>$ cal "; uname -a"</code></pre> which will return a non-zero exit status
+                because of the invalid argument.</p>
+        </div>
+
+        <div id="right-content">
+            <h1>CALENDAR GENERATOR</h1>
+
+            <form method="POST" action="{{ url_for('main') }}">
+                <label for="years">Select year to generate calendar:</label>
+                <select name="years" id="years">
+                    <option value="2022">2022</option>
+                    <option value="2021">2021</option>
+                    <option value="2020">2020</option>
+                    <option value="2019">2019</option>
+                    <option value="2018">2018</option>
+                </select>
+                <button type="submit">Submit</button>
+            </form>
+
+            <div id="calendar">
+                <pre>
+                {{ cal }}
+                </pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
