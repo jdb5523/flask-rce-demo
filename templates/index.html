@@ -60,10 +60,10 @@
             <p>One example of mitigation using input validation is to leverage regular expressions.</p>
             <p>The following code will ensure that the input is a 4-digit string greater than 0.</p>
             <pre><code>
-pattern  = '^\d{4}$'
+pattern  = r'^\d{1,4}$'
 match = re.search(pattern, selected_year)
-if not match or selected_year == '0000':
-    selected_year = '2022'
+if not match or int(selected_year) <= 0 or int(selected_year) > 9999:
+    return render_template('error.html'), 400
             </code></pre>
 
             <h3>Modify Function Call</h3>
@@ -73,8 +73,9 @@ if not match or selected_year == '0000':
             <pre><code>
 try:
     cal = subprocess.check_output(['cal', selected_year]).decode('ascii')
+    return render_template('index.html', cal=cal)
 except:
-    cal = subprocess.check_output(['cal', '2022']).decode('ascii')
+    return render_template('error.html'), 400
             </code></pre>
             <p>The important change is that <code>check_output</code> is now being called with a list
                 as the first argument. The first element of this list represents the command to be 

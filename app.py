@@ -11,11 +11,9 @@ load_dotenv()
 @app.route('/', methods=['GET', 'POST'])
 def main():
     selected_year = '2022'
-    
     if request.method == 'POST':
         selected_year = request.form['years']
         
-    print(selected_year)
     pattern  = r'^\d{1,4}$'
     match = re.search(pattern, selected_year)
     if not match or int(selected_year) <= 0 or int(selected_year) > 9999:
