@@ -27,5 +27,5 @@ def main():
     except:
         return render_template('error.html'), 400
 
-
-app.run(port=5500)
+if __name__ == '__main__':
+    app.run(port=5500)
